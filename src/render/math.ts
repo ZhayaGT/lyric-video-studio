@@ -1,3 +1,6 @@
+/** Fraction of `timing.stagger` applied between word exits (shared by presets and kinetic). */
+export const EXIT_STAGGER_RATIO = 0.35;
+
 export function clamp(x: number, min = 0, max = 1): number {
   return x < min ? min : x > max ? max : x;
 }

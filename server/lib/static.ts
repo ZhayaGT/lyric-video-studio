@@ -15,7 +15,10 @@ export function serveStatic(): MiddlewareHandler {
 
     const rel = decodeURIComponent(url.pathname).replace(/^\/+/, '');
     const candidate = path.resolve(DIST, rel);
-    if (candidate.startsWith(DIST) && fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+    // Compare against DIST + separator: a bare prefix match would also accept a
+    // sibling directory such as `dist-backup/`.
+    const inside = candidate === DIST || candidate.startsWith(DIST + path.sep);
+    if (inside && fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
       const data = await fsp.readFile(candidate);
       const type = mimeFor(candidate);
       return new Response(data, { headers: { 'Content-Type': type } });

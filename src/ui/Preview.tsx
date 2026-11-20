@@ -13,18 +13,22 @@ export function Preview({ project }: { project: Project }) {
 
   const bg = project.style.background;
   const imageFile = bg.kind === 'image' ? bg.file : '';
-  const fontKey = `${project.style.font.family}-${project.style.font.weight}`;
+  const { family, weight, size } = project.style.font;
+  const audioDuration = project.audio.duration;
 
+  // Only reload assets when something they depend on changes. Keying on the
+  // whole `project` object would re-run this on every keystroke and blank the
+  // frame (assets were set to null while loading) — visible as flicker.
   useEffect(() => {
     let cancelled = false;
-    setAssets(null);
     void loadAssets(project).then((loaded) => {
       if (!cancelled) setAssets(loaded);
     });
     return () => {
       cancelled = true;
     };
-  }, [project, imageFile, fontKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project.id, imageFile, family, weight, size, audioDuration]);
 
   useEffect(() => {
     const canvas = canvasRef.current;

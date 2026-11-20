@@ -81,7 +81,10 @@ export function App() {
         void save();
         return;
       }
-      if (!project) return;
+      // Read the live project instead of closing over it: `project` changes on
+      // every keystroke, and depending on it re-registered this listener each
+      // time. The store read keeps the effect deps stable.
+      if (!useEditor.getState().project) return;
 
       switch (event.key) {
         case ' ':
@@ -111,7 +114,7 @@ export function App() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [project, save, tap, setSidebarOpen, setSheetOpen]);
+  }, [save, tap, setSidebarOpen, setSheetOpen]);
 
   const toggleFullscreen = () => {
     const stage = stageRef.current;
@@ -140,7 +143,7 @@ export function App() {
       <div
         className="splitter splitter-left"
         onPointerDown={sidebar.drag}
-        onDoubleClick={() => localStorage.removeItem('lvs.sidebarWidth')}
+        onDoubleClick={sidebar.reset}
         role="separator"
         aria-orientation="vertical"
         aria-label="Atur lebar daftar lagu"
@@ -237,7 +240,7 @@ export function App() {
       <div
         className="splitter splitter-right"
         onPointerDown={panelWidth.drag}
-        onDoubleClick={() => localStorage.removeItem('lvs.panelWidth')}
+        onDoubleClick={panelWidth.reset}
         role="separator"
         aria-orientation="vertical"
         aria-label="Atur lebar panel kanan"

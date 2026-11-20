@@ -251,7 +251,12 @@ export async function transcribeAudio(
       }
     });
 
-    await Promise.all(workers);
+    // allSettled, not all: a failing worker must not tear down the temp dir
+    // while the others are still uploading chunks from it. Surface the first
+    // failure only after every worker has stopped.
+    const settled = await Promise.allSettled(workers);
+    const failure = settled.find((result): result is PromiseRejectedResult => result.status === 'rejected');
+    if (failure) throw failure.reason;
   } finally {
     await fs.rm(tmpDir, { recursive: true, force: true });
   }

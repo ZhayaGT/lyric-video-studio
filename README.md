@@ -267,7 +267,7 @@ data/songs/<id>/ project.json, audio, assets/, exports/
 ## 10. Uji
 
 ```bash
-npm test            # 55 tes: render, lirik, range, beat, inferhub, kinetic
+npm test            # 65 tes: render, lirik, range, beat, inferhub, kinetic, exit window
 npx tsc --noEmit    # typecheck
 npm run build       # typecheck + bundling
 ```

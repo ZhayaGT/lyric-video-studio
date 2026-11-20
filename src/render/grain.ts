@@ -2,6 +2,8 @@ import type { Ctx2D } from './text.js';
 
 const TILE = 160;
 let tile: OffscreenCanvas | null = null;
+/** Patterns are bound to a context, so cache one per canvas context. */
+const patterns = new WeakMap<object, CanvasPattern>();
 
 /** Seeded PRNG so the grain tile is identical in preview and export. */
 function mulberry32(seed: number): () => number {
@@ -47,12 +49,20 @@ export function drawGrain(ctx: Ctx2D, strength: number, t: number): void {
   const source = noiseTile();
   if (!source) return;
 
-  const pattern = withPattern.createPattern(source, 'repeat');
-  if (!pattern) return;
+  let pattern = patterns.get(ctx);
+  if (!pattern) {
+    const created = withPattern.createPattern(source, 'repeat');
+    if (!created) return;
+    pattern = created;
+    patterns.set(ctx, pattern);
+  }
 
   ctx.save();
   ctx.globalAlpha = Math.min(0.4, strength);
-  ctx.globalCompositeOperation = 'overlay';
+  // `source-over` at low alpha: overlay/soft-light scale with the base colour, so
+  // on a dark background the grain all but vanished. Plain alpha noise lifts the
+  // blacks slightly and stays visible at any brightness.
+  ctx.globalCompositeOperation = 'source-over';
   // Slow drift keeps the grain alive without flickering every frame.
   const offsetX = Math.floor((t * 37) % TILE);
   const offsetY = Math.floor((t * 53) % TILE);

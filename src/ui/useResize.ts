@@ -40,7 +40,12 @@ export function usePanelWidth(key: string, fallback: number, min: number, max: n
     [width, min, max, side],
   );
 
-  return { width, drag };
+  const reset = () => {
+    localStorage.removeItem(key);
+    setWidth(fallback);
+  };
+
+  return { width, drag, reset };
 }
 
 /**

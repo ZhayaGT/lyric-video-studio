@@ -16,19 +16,26 @@ function slugForExport(name: string): string {
   return base || 'export';
 }
 
-/** Never overwrite an earlier render: append -2, -3, … until the name is free. */
+/**
+ * Never overwrite an earlier render: append -2, -3, … until the name is free.
+ * The file is created with the exclusive flag, so two exports racing for the
+ * same name cannot both win.
+ */
 async function uniqueExportPath(dir: string, base: string): Promise<{ name: string; path: string }> {
   for (let n = 1; n < 1000; n++) {
     const name = n === 1 ? `${base}.mp4` : `${base}-${n}.mp4`;
     const target = path.join(dir, name);
     try {
-      await fsp.access(target);
-    } catch {
+      await fsp.writeFile(target, '', { flag: 'wx' });
       return { name, path: target };
+    } catch {
+      /* taken — try the next suffix */
     }
   }
   const name = `${base}-${Date.now()}.mp4`;
-  return { name, path: path.join(dir, name) };
+  const target = path.join(dir, name);
+  await fsp.writeFile(target, '', { flag: 'wx' });
+  return { name, path: target };
 }
 
 export function registerMuxRoutes(app: Hono): void {
@@ -68,6 +75,9 @@ export function registerMuxRoutes(app: Hono): void {
     } catch (err) {
       const e = err as { stderr?: string; message?: string };
       await fsp.rm(videoPath, { force: true });
+      // Drop the empty placeholder so a failed render does not leave a 0-byte
+      // MP4 that looks like a finished export.
+      await fsp.rm(outPath, { force: true });
       return c.json({ error: 'mux_failed', detail: tail(e.stderr ?? e.message ?? String(err)) }, 500);
     }
 

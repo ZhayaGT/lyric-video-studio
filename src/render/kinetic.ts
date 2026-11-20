@@ -1,7 +1,7 @@
 import type { Kinetic, LyricLine, Style } from '../types.js';
 import type { Ctx2D } from './text.js';
 import { applyFont, measureToken, wordTimings } from './text.js';
-import { clamp, easeInCubic, easeOutBack, easeOutCubic, withAlpha } from './math.js';
+import { EXIT_STAGGER_RATIO, clamp, easeInCubic, easeOutBack, easeOutCubic, withAlpha } from './math.js';
 
 export const DEFAULT_KINETIC: Kinetic = {
   emphasisScale: 0.85,
@@ -266,7 +266,7 @@ export function drawKinetic(
 
     layout.words.forEach((word, index) => {
       const enterP = clamp((t - layout.start) / inDur);
-      const exitDelay = (layout.words.length - 1 - index) * (style.timing.stagger * 0.5);
+      const exitDelay = (layout.words.length - 1 - index) * style.timing.stagger * EXIT_STAGGER_RATIO;
       const exitP = clamp((t - (layout.end - outDur + exitDelay)) / outDur);
       if (enterP <= 0.001 || exitP >= 0.999) return;
 

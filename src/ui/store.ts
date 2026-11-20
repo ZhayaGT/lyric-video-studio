@@ -283,14 +283,17 @@ export const useEditor = create<EditorState>((set, get) => ({
     const index = project.lines.findIndex((line) => line.id === id);
     const target = index + direction;
     if (index === -1 || target < 0 || target >= project.lines.length) return;
-    const lines = [...project.lines];
-    [lines[index], lines[target]] = [lines[target], lines[index]];
-    // keep the timeline monotonic: swap the time slots too
-    const times = project.lines.map((l) => ({ start: l.start, end: l.end }));
-    lines.forEach((line, i) => {
-      line.start = times[i].start;
-      line.end = times[i].end;
-    });
+
+    // Swap the entries but keep the time slots: the timeline stays monotonic and
+    // only the text order changes. Build new objects — the old ones are still
+    // referenced by the current state and by the save snapshot.
+    const order = [...project.lines];
+    [order[index], order[target]] = [order[target], order[index]];
+    const lines = order.map((line, i) => ({
+      ...line,
+      start: project.lines[i].start,
+      end: project.lines[i].end,
+    }));
     get().mutate((p) => ({ ...p, lines }));
   },
 

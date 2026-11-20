@@ -1,5 +1,5 @@
 import type { LyricLine, Style } from '../types.js';
-import { clamp, easeInCubic, easeOutCubic } from './math.js';
+import { clamp, easeOutCubic } from './math.js';
 
 export type Ctx2D = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 
@@ -139,19 +139,19 @@ export function layoutLine(ctx: Ctx2D, text: string, style: Style, w: number): T
   return layout;
 }
 
-/** Fade-in/fade-out envelope for a line. Crossfade widens the visible window. */
-export function lineOpacity(
+/**
+ * Entrance envelope for a line. Deliberately has no fade-out: each preset owns
+ * its exit (and staggers it word by word), so fading here as well would dim the
+ * line before its own animation finished.
+ */
+export function lineEntranceOpacity(
   t: number,
   line: LyricLine,
   timing: Style['timing'],
   transition: Style['transition'],
 ): number {
   const pad = transition === 'crossfade' ? 0.25 : 0;
-  const from = line.start - pad;
-  const to = line.end + pad;
-  const fadeIn = easeOutCubic(clamp((t - from) / Math.max(timing.inDur, 0.01)));
-  const fadeOut = 1 - easeInCubic(clamp((t - (to - timing.outDur)) / Math.max(timing.outDur, 0.01)));
-  return clamp(Math.min(fadeIn, fadeOut));
+  return clamp(easeOutCubic(clamp((t - (line.start - pad)) / Math.max(timing.inDur, 0.01))));
 }
 
 /** Word timings from the project, else proportional character distribution. */

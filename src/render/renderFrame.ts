@@ -2,17 +2,23 @@ import type { Project } from '../types.js';
 import type { Assets } from './assets.js';
 import type { Ctx2D } from './text.js';
 import { drawBackground } from './backgrounds.js';
-import { drawLine, drawSafeArea } from './presets.js';
+import { drawLine, drawSafeArea, exitSpan, wordCount } from './presets.js';
 import { beatPhase } from './beat.js';
 import { withAlpha } from './math.js';
 import { drawGrain } from './grain.js';
 
 export type RenderOpts = { safeAreaGuides?: boolean };
 
-/** Lines whose visible window contains `t` (inclusive crossfade padding). */
+/**
+ * Lines whose visible window contains `t`. The tail is padded by the full exit
+ * span (duration + stagger tail) so a staggered exit is never clipped, and the
+ * head by the crossfade overlap.
+ */
 export function activeLines(project: Project, t: number) {
-  const pad = project.style.transition === 'crossfade' ? 0.25 : 0;
-  return project.lines.filter((line) => t >= line.start - pad && t <= line.end + pad);
+  const lead = project.style.transition === 'crossfade' ? 0.25 : 0;
+  return project.lines.filter(
+    (line) => t >= line.start - lead && t <= line.end + exitSpan(project.style, wordCount(line.text)),
+  );
 }
 
 /**

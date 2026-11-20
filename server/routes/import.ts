@@ -11,6 +11,10 @@ import { splitText, distributeTiming } from '../../src/lyrics/split.js';
 const AUDIO_EXT = new Set(['.mp3', '.m4a', '.wav', '.ogg', '.opus', '.flac', '.aac', '.webm', '.mp4']);
 const IMAGE_EXT = new Set(['.png', '.jpg', '.jpeg', '.webp']);
 
+/** Guard against filling the disk from the local UI (a 5-minute WAV is ~50 MB). */
+const MAX_AUDIO_BYTES = 300 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 25 * 1024 * 1024;
+
 function extOf(name: string): string {
   return path.extname(name).toLowerCase();
 }
@@ -25,6 +29,10 @@ export function registerImportRoutes(app: Hono): void {
     const ext = extOf(file.name);
     const allowed = kind === 'image' ? IMAGE_EXT : AUDIO_EXT;
     if (!allowed.has(ext)) return c.json({ error: `format tidak didukung: ${ext || '?'}` }, 400);
+    const limit = kind === 'image' ? MAX_IMAGE_BYTES : MAX_AUDIO_BYTES;
+    if (file.size > limit) {
+      return c.json({ error: 'berkas terlalu besar', detail: `maks ${Math.round(limit / 1024 / 1024)} MB` }, 413);
+    }
 
     if (kind === 'image') {
       const songId = String(form.songId ?? '');

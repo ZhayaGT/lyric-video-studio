@@ -1,10 +1,37 @@
 import type { LyricLine, Motion, Style } from '../types.js';
 import type { Ctx2D, TextLayout, TokenBox } from './text.js';
-import { applyFont, layoutLine, lineOpacity, wordTimings } from './text.js';
-import { clamp, easeInCubic, easeOutBack, easeOutCubic } from './math.js';
+import { applyFont, layoutLine, lineEntranceOpacity, wordTimings } from './text.js';
+import { EXIT_STAGGER_RATIO, clamp, easeInCubic, easeOutBack, easeOutCubic } from './math.js';
 import { drawKinetic, resolveKinetic } from './kinetic.js';
 
 export type BeatPhase = number;
+
+/** Word count without allocating an array — called for every line, every frame. */
+export function wordCount(text: string): number {
+  let count = 0;
+  let inWord = false;
+  for (let i = 0; i < text.length; i++) {
+    const code = text.charCodeAt(i);
+    const space = code === 32 || code === 9 || code === 10 || code === 13;
+    if (space) inWord = false;
+    else if (!inWord) {
+      inWord = true;
+      count += 1;
+    }
+  }
+  return count;
+}
+
+/**
+ * How long after `line.end` the line is still visible: the exit duration plus the
+ * stagger tail of the last word to leave. renderFrame pads its line filter by
+ * this, otherwise the staggered exit is clipped mid-fade.
+ */
+export function exitSpan(style: Style, wordCount: number): number {
+  const outDur = Math.max(style.timing.outDur, 0.01);
+  const tail = Math.max(0, wordCount - 1) * style.timing.stagger * EXIT_STAGGER_RATIO;
+  return outDur + tail;
+}
 
 export const DEFAULT_MOTION: Motion = {
   cameraZoom: 0.04,
@@ -69,13 +96,16 @@ function applyShadow(ctx: Ctx2D, style: Style, size: number): void {
  */
 function wordFx(env: LineEnv, index: number, count: number, wordStart: number): WordFx {
   const { style, motion, t, inDur, outDur, holdSeconds } = env;
-  // A full stagger reads as "one word at a time" and looks broken on line
-  // starts, so only word-centric presets use it at full strength; the rest get
-  // a subtle ripple that still finishes inside the entrance window.
+  // Entrance: a full stagger reads as "one word at a time" and looks broken on
+  // line starts, so only word-centric presets use it at full strength and the
+  // rest ripple within the entrance window.
   const perWord = style.preset === 'pop-word' ? 1 : style.preset === 'mask-reveal' ? 0 : 0.25;
-  const stagger = Math.min(style.timing.stagger * perWord, inDur / Math.max(count, 1));
-  const exitDelay = (count - 1 - index) * stagger * 0.35;
-  const p = clamp((t - (wordStart + index * stagger)) / inDur);
+  const staggerIn = Math.min(style.timing.stagger * perWord, inDur / Math.max(count, 1));
+  // Exit keeps the user's stagger: clamping it to the entrance window made the
+  // whole line leave almost at once, which is exactly the effect the control is
+  // supposed to provide.
+  const exitDelay = (count - 1 - index) * style.timing.stagger * EXIT_STAGGER_RATIO;
+  const p = clamp((t - (wordStart + index * staggerIn)) / inDur);
   const q = clamp((t - (env.line.end - outDur + exitDelay)) / outDur);
   const pe = easeOutCubic(p);
   // Exit: linear alpha so the fade is visible through the whole window, but
@@ -282,9 +312,12 @@ function drawTypewriter(
   layout: TextLayout,
   originX: number,
   baseline: (row: number) => number,
+  masterAlpha: number,
 ): void {
-  const { line, t, style } = env;
+  const { line, t, style, outDur } = env;
   const span = Math.max(line.end - line.start, 0.05);
+  const exitQ = clamp((t - (line.end - outDur)) / outDur);
+  if (exitQ >= 0.999) return;
   const reveal = clamp((t - line.start) / Math.max(0.6 * span, 0.05));
   const visible = Math.floor(layout.text.length * reveal);
   const typing = visible < layout.text.length;
@@ -299,6 +332,7 @@ function drawTypewriter(
     if (visible <= rowStart) return;
     const sliceEnd = Math.min(visible, rowEnd) - rowStart;
     const caret = caretOn && visible > rowStart && visible <= rowEnd ? '▍' : '';
+    ctx.globalAlpha = masterAlpha * (1 - easeInCubic(exitQ));
     ctx.fillStyle = style.colors.text;
     ctx.fillText(rowText.slice(0, sliceEnd) + caret, originX + row[0].x, baseline(rowIndex));
   });
@@ -319,7 +353,7 @@ export function drawLine(
   style: Style,
   beatPhase: BeatPhase,
 ): void {
-  const master = lineOpacity(t, line, style.timing, style.transition);
+  const master = lineEntranceOpacity(t, line, style.timing, style.transition);
   if (master <= 0.002) return;
 
   // Kinetic typography owns its own layout (mixed sizes, uneven baseline), so it
@@ -380,7 +414,7 @@ export function drawLine(
   } else if (style.preset === 'karaoke') {
     drawKaraoke(ctx, env, layout, originX, baseline, timings);
   } else if (style.preset === 'typewriter') {
-    drawTypewriter(ctx, env, layout, originX, baseline);
+    drawTypewriter(ctx, env, layout, originX, baseline, master);
   } else {
     const total = Math.max(layout.rows.flat().length, 1);
     const wordClock = usesWordClock(style.preset);
