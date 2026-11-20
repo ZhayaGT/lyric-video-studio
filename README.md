@@ -7,10 +7,28 @@ tanpa Electron/Chromium tambahan**. Yang dibutuhkan hanya **Node + ffmpeg +
 yt-dlp**. Transkripsi lirik memakai inferhub (cloud), BPM dianalisis di browser,
 dan encoding video memakai WebCodecs di browser.
 
+![Pratinjau](docs/preview.png)
+
+![Antarmuka](docs/screenshot.png)
+
 - Render 720p ±85 fps, 1080p ±40 fps (RTX 5050; PC gereja lebih lambat tapi tetap jalan)
 - Lirik: YouTube auto-caption, LRC/VTT, LRCLIB, transkripsi AI, tap-sync manual
 - 9 animasi + panel gerak + kinetic typography + grain film
 - Panel & timeline bisa diatur lebarnya, responsif sampai layar ponsel
+
+### Daftar isi
+
+1. [Pasang prasyarat](#1-pasang-prasyarat) — Node, ffmpeg, yt-dlp
+2. [Pasang aplikasi](#2-pasang-aplikasi) — clone + `npm install`
+3. [Jalankan](#3-jalankan) — `start.bat` / `start.sh`
+4. [Pindah ke PC gereja](#4-pindah-ke-pc-gereja) — apa yang disalin
+5. [Konfigurasi `.env`](#5-konfigurasi-env)
+6. [Cara pakai](#6-cara-pakai)
+7. [Animasi](#7-animasi)
+8. [Cara kerja AI](#8-cara-kerja-ai-inferhub)
+9. [Struktur](#9-struktur)
+10. [Uji](#10-uji)
+11. [Kalau ada masalah](#11-kalau-ada-masalah)
 
 ---
 
