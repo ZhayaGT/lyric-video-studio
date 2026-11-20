@@ -1,0 +1,22 @@
+# dependensi & hasil build
+node_modules/
+dist/
+tsconfig.tsbuildinfo
+
+# data pengguna: audio, lirik, ekspor, gambar latar
+data/
+
+# rahasia
+.env
+.env.local
+*.key
+
+# log & cache
+*.log
+.vite/
+.DS_Store
+Thumbs.db
+
+# sisa editor
+.idea/
+.vscode/
